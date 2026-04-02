@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Keep Tab Alive - Teste</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0f0f0f; color: #eee; font-family: monospace; padding: 20px; }
+    h1 { font-size: 18px; color: #00cc44; margin-bottom: 20px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .card { background: #1a1a1a; border-radius: 8px; padding: 14px; border-left: 4px solid #333; }
+    .card.ok { border-left-color: #00cc44; }
+    .card.fail { border-left-color: #cc3333; }
+    .card h3 { font-size: 12px; color: #aaa; margin-bottom: 8px; text-transform: uppercase; }
+    .value { font-size: 20px; font-weight: bold; }
+    .value.green { color: #00cc44; }
+    .value.red { color: #cc3333; }
+    .log { margin-top: 20px; background: #1a1a1a; border-radius: 8px; padding: 14px; height: 200px; overflow-y: auto; }
+    .log h3 { font-size: 12px; color: #aaa; margin-bottom: 8px; text-transform: uppercase; }
+    .log-item { font-size: 12px; padding: 3px 0; border-bottom: 1px solid #222; }
+    .log-item.blocked { color: #00cc44; }
+    .log-item.detected { color: #cc3333; }
+    .status-bar { margin-bottom: 16px; padding: 10px 14px; border-radius: 8px; font-weight: bold; font-size: 14px; text-align: center; }
+    .status-bar.active { background: #0a2a0a; color: #00cc44; border: 1px solid #00cc44; }
+    .status-bar.inactive { background: #2a0a0a; color: #cc3333; border: 1px solid #cc3333; }
+  </style>
+</head>
+<body>
+  <h1>🛡️ Keep Tab Alive — Painel de Teste</h1>
+
+  <div class="status-bar inactive" id="statusBar">🔴 Extensão NÃO detectada nesta aba</div>
+
+  <div class="grid">
+    <div class="card" id="card-visibility">
+      <h3>visibilityState</h3>
+      <div class="value" id="val-visibility">—</div>
+    </div>
+    <div class="card" id="card-hidden">
+      <h3>document.hidden</h3>
+      <div class="value" id="val-hidden">—</div>
+    </div>
+    <div class="card" id="card-focus">
+      <h3>hasFocus()</h3>
+      <div class="value" id="val-focus">—</div>
+    </div>
+    <div class="card" id="card-blur">
+      <h3>blur / focusout</h3>
+      <div class="value" id="val-blur">Aguardando...</div>
+    </div>
+    <div class="card" id="card-vischange">
+      <h3>visibilitychange event</h3>
+      <div class="value" id="val-vischange">Aguardando...</div>
+    </div>
+    <div class="card" id="card-timer">
+      <h3>setTimeout (2000ms)</h3>
+      <div class="value" id="val-timer">Aguardando...</div>
+    </div>
+  </div>
+
+  <div class="log">
+    <h3>📋 Log de eventos</h3>
+    <div id="logList"></div>
+  </div>
+
+  <script>
+    function log(msg, blocked) {
+      const el = document.createElement('div');
+      el.className = 'log-item ' + (blocked ? 'blocked' : 'detected');
+      el.textContent = `[${new Date().toLocaleTimeString()}] ${blocked ? '🛡️ BLOQUEADO' : '⚠️ DETECTADO'}: ${msg}`;
+      document.getElementById('logList').prepend(el);
+    }
+
+    function update() {
+      const vs = document.visibilityState;
+      const hidden = document.hidden;
+      const focus = document.hasFocus();
+
+      const vsEl = document.getElementById('val-visibility');
+      vsEl.textContent = vs;
+      vsEl.className = 'value ' + (vs === 'visible' ? 'green' : 'red');
+      document.getElementById('card-visibility').className = 'card ' + (vs === 'visible' ? 'ok' : 'fail');
+
+      const hiddenEl = document.getElementById('val-hidden');
+      hiddenEl.textContent = String(hidden);
+      hiddenEl.className = 'value ' + (!hidden ? 'green' : 'red');
+      document.getElementById('card-hidden').className = 'card ' + (!hidden ? 'ok' : 'fail');
+
+      const focusEl = document.getElementById('val-focus');
+      focusEl.textContent = String(focus);
+      focusEl.className = 'value ' + (focus ? 'green' : 'red');
+      document.getElementById('card-focus').className = 'card ' + (focus ? 'ok' : 'fail');
+
+      const allOk = vs === 'visible' && !hidden && focus;
+      const bar = document.getElementById('statusBar');
+      bar.textContent = allOk ? '🟢 Extensão ATIVA — aba sempre visível' : '🔴 Extensão NÃO detectada nesta aba';
+      bar.className = 'status-bar ' + (allOk ? 'active' : 'inactive');
+    }
+
+    // visibilitychange
+    document.addEventListener('visibilitychange', () => {
+      const vs = document.visibilityState;
+      if (vs === 'hidden') {
+        log('visibilitychange → hidden', false);
+        document.getElementById('val-vischange').textContent = '⚠️ Detectado!';
+        document.getElementById('val-vischange').className = 'value red';
+        document.getElementById('card-vischange').className = 'card fail';
+      } else {
+        log('visibilitychange → visible (bloqueado?)', true);
+        document.getElementById('val-vischange').textContent = '🛡️ Bloqueado';
+        document.getElementById('val-vischange').className = 'value green';
+        document.getElementById('card-vischange').className = 'card ok';
+      }
+      update();
+    });
+
+    // blur
+    window.addEventListener('blur', () => {
+      log('blur detectado', false);
+      document.getElementById('val-blur').textContent = '⚠️ Detectado!';
+      document.getElementById('val-blur').className = 'value red';
+      document.getElementById('card-blur').className = 'card fail';
+    });
+
+    window.addEventListener('focus', () => {
+      log('focus recuperado', true);
+      document.getElementById('val-blur').textContent = '🛡️ Com foco';
+      document.getElementById('val-blur').className = 'value green';
+      document.getElementById('card-blur').className = 'card ok';
+    });
+
+    // setTimeout test
+    let timerStart = Date.now();
+    setTimeout(() => {
+      const elapsed = Date.now() - timerStart;
+      const blocked = elapsed < 1800;
+      document.getElementById('val-timer').textContent = blocked ? `🛡️ ${elapsed}ms` : `⚠️ ${elapsed}ms`;
+      document.getElementById('val-timer').className = 'value ' + (blocked ? 'green' : 'red');
+      document.getElementById('card-timer').className = 'card ' + (blocked ? 'ok' : 'fail');
+      log(`setTimeout 2000ms executou em ${elapsed}ms`, blocked);
+    }, 2000);
+
+    // Atualiza a cada segundo
+    setInterval(update, 1000);
+    update();
+  </script>
+</body>
+</html>
+```

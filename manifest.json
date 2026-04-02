@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Keep Tab Alive",
+  "version": "1.0",
+  "action": {
+    "default_title": "Keep Tab Alive",
+    "default_popup": "popup.html"
+  },
+  "permissions": ["activeTab", "scripting", "tabs", "storage"],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>", "file://*/*"],
+      "js": ["content.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}

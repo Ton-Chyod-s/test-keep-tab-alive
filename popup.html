@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { width: 280px; font-family: sans-serif; background: #1a1a1a; color: #eee; padding: 12px; }
+    h3 { font-size: 13px; color: #aaa; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+    .item { display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; margin-bottom: 4px; border-radius: 6px; background: #2a2a2a; font-size: 12px; cursor: pointer; }
+    .item.active { background: #1a3a1a; border-left: 3px solid #00cc44; }
+    .item.inactive { background: #2a1a1a; border-left: 3px solid #cc3333; opacity: 0.6; }
+    .badge { font-size: 10px; padding: 2px 6px; border-radius: 10px; font-weight: bold; }
+    .badge.on { background: #00cc44; color: #000; }
+    .badge.off { background: #cc3333; color: #fff; }
+    .toggle-btn { width: 100%; margin-top: 10px; padding: 9px; border: none; border-radius: 6px; font-weight: bold; font-size: 13px; cursor: pointer; }
+    .toggle-btn.on { background: #cc3333; color: #fff; }
+    .toggle-btn.off { background: #00cc44; color: #000; }
+    .status { text-align: center; font-size: 11px; color: #888; margin-top: 8px; }
+    .warning { display: none; margin-top: 8px; padding: 8px 10px; background: #2a1a00; border-left: 3px solid #ff9900; border-radius: 6px; font-size: 11px; color: #ff9900; }
+    .reload-btn { width: 100%; margin-top: 6px; padding: 7px; border: none; border-radius: 6px; font-weight: bold; font-size: 12px; cursor: pointer; background: #ff9900; color: #000; }
+  </style>
+</head>
+<body>
+  <h3>🛡️ Keep Tab Alive</h3>
+  <div id="blocks"></div>
+  <button class="toggle-btn off" id="toggleBtn">⚡ Ativar nesta aba</button>
+  <div class="status" id="status">Inativo</div>
+  <div class="warning" id="warning">
+    ⚠️ Para restaurar o comportamento original da página, recarregue-a.
+    <button class="reload-btn" id="reloadBtn">🔄 Recarregar página agora</button>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

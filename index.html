@@ -5,7 +5,7 @@
   <title>Keep Tab Alive - Teste</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #0f0f0f; color: #eee; font-family: monospace; padding: 20px; }
+    body { background: #0f0f0f; color: #eee; font-family: monospace; padding: 20px; min-height: 100vh; display: flex; flex-direction: column; }
     h1 { font-size: 18px; color: #00cc44; margin-bottom: 20px; }
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .card { background: #1a1a1a; border-radius: 8px; padding: 14px; border-left: 4px solid #333; }
@@ -18,7 +18,7 @@
     .value.green { color: #00cc44; }
     .value.red { color: #cc3333; }
     .value.orange { color: #ff9900; }
-    .log { margin-top: 20px; background: #1a1a1a; border-radius: 8px; padding: 14px; height: 220px; overflow-y: auto; }
+    .log { margin-top: 20px; background: #1a1a1a; border-radius: 8px; padding: 14px; flex: 1; overflow-y: auto; min-height: 150px; }
     .log h3 { font-size: 12px; color: #aaa; margin-bottom: 8px; text-transform: uppercase; }
     .log-item { font-size: 12px; padding: 3px 0; border-bottom: 1px solid #222; }
     .log-item.blocked { color: #00cc44; }

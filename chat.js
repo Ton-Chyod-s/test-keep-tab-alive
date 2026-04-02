@@ -1,6 +1,13 @@
-// Injeta o chat flutuante
 (function() {
   if (document.getElementById('__kta_chat')) return;
+
+  const GEMINI_API_KEY = '';       // 🔑 cola sua key aqui se tiver (aistudio.google.com)
+  const OPENROUTER_API_KEY = '';
+
+  // Carrega html2canvas
+  const script = document.createElement('script');
+  script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+  document.head.appendChild(script);
 
   const style = document.createElement('style');
   style.textContent = `
@@ -117,13 +124,11 @@
   `;
   document.head.appendChild(style);
 
-  // Botão flutuante
   const btn = document.createElement('button');
   btn.id = '__kta_btn';
   btn.textContent = '🛡️';
   document.body.appendChild(btn);
 
-  // Painel
   const panel = document.createElement('div');
   panel.id = '__kta_panel';
   panel.innerHTML = `
@@ -140,7 +145,6 @@
   `;
   document.body.appendChild(panel);
 
-  // Overlay de seleção
   const overlay = document.createElement('div');
   overlay.id = '__kta_overlay';
   document.body.appendChild(overlay);
@@ -148,50 +152,115 @@
   selection.id = '__kta_selection';
   document.body.appendChild(selection);
 
-  // Toggle painel
   btn.addEventListener('click', () => panel.classList.toggle('open'));
   document.getElementById('__kta_close').addEventListener('click', () => panel.classList.remove('open'));
 
   function addMessage(text, type) {
     const msg = document.createElement('div');
     msg.className = 'kta_msg ' + type;
-    msg.textContent = text;
+
+    if (type === 'loading') {
+      msg.innerHTML = 'Analisando<span class="kta_dots"></span>';
+      let dots = 0;
+      msg._interval = setInterval(() => {
+        dots = (dots + 1) % 4;
+        const span = msg.querySelector('.kta_dots');
+        if (span) span.textContent = '.'.repeat(dots) || '';
+      }, 400);
+    } else {
+      msg.textContent = text;
+    }
+
     const messages = document.getElementById('__kta_messages');
     messages.appendChild(msg);
     messages.scrollTop = messages.scrollHeight;
     return msg;
   }
 
-  async function askAI(text, imageBase64 = null) {
-    const loading = addMessage('Pensando...', 'loading');
+  function removeLoading(loading) {
+    loading._interval && clearInterval(loading._interval);
+    loading.remove();
+  }
 
+  // Gemini API
+  async function askGemini(text, imageBase64) {
+    const parts = [];
+    if (imageBase64) {
+      parts.push({ inline_data: { mime_type: 'image/jpeg', data: imageBase64 } });
+    }
+    parts.push({ text: 'Responda sempre em português brasileiro, de forma clara e objetiva.\n\n' + text });
+
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts }] })
+      }
+    );
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sem resposta.';
+  }
+
+  // OpenRouter API (fallback)
+  async function askOpenRouter(text, imageBase64) {
     const content = [];
     if (imageBase64) {
-      content.push({ type: 'image', source: { type: 'base64', media_type: 'image/png', data: imageBase64 } });
+      content.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imageBase64}` } });
     }
     content.push({ type: 'text', text });
 
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: imageBase64 ? 'nvidia/nemotron-nano-12b-v2-vl:free' : 'openrouter/free',
+        messages: [
+          { role: 'system', content: 'Você é um assistente útil. Responda sempre em português brasileiro, de forma clara e objetiva.' },
+          { role: 'user', content }
+        ]
+      })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    return data.choices?.[0]?.message?.content || 'Sem resposta.';
+  }
+
+  async function askAI(text, imageBase64 = null) {
+    const loading = addMessage('', 'loading');
+
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          messages: [{ role: 'user', content }]
-        })
-      });
-      const data = await res.json();
-      loading.remove();
-      const reply = data.content?.[0]?.text || 'Sem resposta.';
+      let reply;
+
+      if (GEMINI_API_KEY) {
+        // ✅ Tenta Gemini primeiro
+        try {
+          reply = await askGemini(text, imageBase64);
+          console.log('[KTA] Usou Gemini');
+        } catch (geminiErr) {
+          console.warn('[KTA] Gemini falhou, usando OpenRouter:', geminiErr.message);
+          reply = await askOpenRouter(text, imageBase64);
+          console.log('[KTA] Usou OpenRouter (fallback)');
+        }
+      } else {
+        // Sem key do Gemini, vai direto pro OpenRouter
+        reply = await askOpenRouter(text, imageBase64);
+        console.log('[KTA] Usou OpenRouter');
+      }
+
+      removeLoading(loading);
       addMessage(reply, 'ai');
     } catch (e) {
-      loading.remove();
-      addMessage('Erro ao conectar com a IA.', 'ai');
+      removeLoading(loading);
+      addMessage('Erro: ' + e.message, 'ai');
+      console.error('[KTA] erro:', e);
     }
   }
 
-  // Enviar mensagem
   document.getElementById('__kta_send').addEventListener('click', () => {
     const input = document.getElementById('__kta_input');
     const text = input.value.trim();
@@ -208,7 +277,6 @@
     }
   });
 
-  // Screenshot via seleção
   let isSelecting = false;
   let startX, startY;
 
@@ -251,33 +319,27 @@
 
     if (w < 10 || h < 10) return;
 
-    // Captura via canvas
     try {
-      const video = document.createElement('video');
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-      video.srcObject = stream;
-      await video.play();
+      const canvas = await html2canvas(document.body, {
+        x: x + window.scrollX,
+        y: y + window.scrollY,
+        width: w,
+        height: h,
+        useCORS: true,
+        logging: false,
+      });
 
-      const canvas = document.createElement('canvas');
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext('2d');
-      const scaleX = video.videoWidth / window.innerWidth;
-      const scaleY = video.videoHeight / window.innerHeight;
-      ctx.drawImage(video, x * scaleX, y * scaleY, w * scaleX, h * scaleY, 0, 0, w, h);
-      stream.getTracks().forEach(t => t.stop());
-
-      const base64 = canvas.toDataURL('image/png').split(',')[1];
+      const base64 = canvas.toDataURL('image/jpeg', 0.7).split(',')[1];
       panel.classList.add('open');
       addMessage('📷 Imagem capturada', 'user');
-      askAI('O que está escrito nessa imagem? Responda a pergunta se houver uma.', base64);
+      askAI('Analise essa imagem. Se houver uma pergunta visível, responda ela diretamente sem repetir a pergunta. Se for apenas texto, descreva o conteúdo.', base64);
     } catch (err) {
       panel.classList.add('open');
-      addMessage('Erro ao capturar tela. Permita o acesso à tela.', 'ai');
+      addMessage('Erro ao capturar tela.', 'ai');
+      console.error('[KTA] html2canvas error:', err);
     }
   });
 
-    // Alt+1 → abre/fecha chat
   document.addEventListener('keydown', (e) => {
     if (e.altKey && e.key === '1') {
       e.preventDefault();
@@ -285,7 +347,6 @@
     }
   });
 
-  // Alt+2 → captura de tela
   document.addEventListener('keydown', (e) => {
     if (e.altKey && e.key === '2') {
       e.preventDefault();

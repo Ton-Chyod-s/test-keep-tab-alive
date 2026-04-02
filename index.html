@@ -20,9 +20,12 @@
     .log-item { font-size: 12px; padding: 3px 0; border-bottom: 1px solid #222; }
     .log-item.blocked { color: #00cc44; }
     .log-item.detected { color: #cc3333; }
+    .log-item.simulated { color: #ff9900; }
     .status-bar { margin-bottom: 16px; padding: 10px 14px; border-radius: 8px; font-weight: bold; font-size: 14px; text-align: center; }
     .status-bar.active { background: #0a2a0a; color: #00cc44; border: 1px solid #00cc44; }
     .status-bar.inactive { background: #2a0a0a; color: #cc3333; border: 1px solid #cc3333; }
+    .reset-btn { margin-top: 12px; width: 100%; padding: 8px; background: #333; color: #aaa; border: none; border-radius: 6px; font-family: monospace; font-size: 12px; cursor: pointer; }
+    .reset-btn:hover { background: #444; color: #eee; }
   </style>
 </head>
 <body>
@@ -55,7 +58,13 @@
       <h3>setTimeout (2000ms)</h3>
       <div class="value" id="val-timer">Aguardando...</div>
     </div>
+    <div class="card" id="card-activity">
+      <h3>mousemove / keydown</h3>
+      <div class="value" id="val-activity">Aguardando...</div>
+    </div>
   </div>
+
+  <button class="reset-btn" onclick="location.reload()">🔄 Recarregar página (resetar testes)</button>
 
   <div class="log">
     <h3>📋 Log de eventos</h3>
@@ -63,10 +72,11 @@
   </div>
 
   <script>
-    function log(msg, blocked) {
+    function log(msg, type = 'detected') {
       const el = document.createElement('div');
-      el.className = 'log-item ' + (blocked ? 'blocked' : 'detected');
-      el.textContent = `[${new Date().toLocaleTimeString()}] ${blocked ? '🛡️ BLOQUEADO' : '⚠️ DETECTADO'}: ${msg}`;
+      el.className = 'log-item ' + type;
+      const icon = type === 'blocked' ? '🛡️ BLOQUEADO' : type === 'simulated' ? '🟠 SIMULADO' : '⚠️ DETECTADO';
+      el.textContent = `[${new Date().toLocaleTimeString()}] ${icon}: ${msg}`;
       document.getElementById('logList').prepend(el);
     }
 
@@ -100,12 +110,12 @@
     document.addEventListener('visibilitychange', () => {
       const vs = document.visibilityState;
       if (vs === 'hidden') {
-        log('visibilitychange → hidden', false);
+        log('visibilitychange → hidden', 'detected');
         document.getElementById('val-vischange').textContent = '⚠️ Detectado!';
         document.getElementById('val-vischange').className = 'value red';
         document.getElementById('card-vischange').className = 'card fail';
       } else {
-        log('visibilitychange → visible (bloqueado?)', true);
+        log('visibilitychange → visible (bloqueado?)', 'blocked');
         document.getElementById('val-vischange').textContent = '🛡️ Bloqueado';
         document.getElementById('val-vischange').className = 'value green';
         document.getElementById('card-vischange').className = 'card ok';
@@ -115,17 +125,31 @@
 
     // blur
     window.addEventListener('blur', () => {
-      log('blur detectado', false);
+      log('blur detectado', 'detected');
       document.getElementById('val-blur').textContent = '⚠️ Detectado!';
       document.getElementById('val-blur').className = 'value red';
       document.getElementById('card-blur').className = 'card fail';
     });
 
     window.addEventListener('focus', () => {
-      log('focus recuperado', true);
+      log('focus recuperado', 'blocked');
       document.getElementById('val-blur').textContent = '🛡️ Com foco';
       document.getElementById('val-blur').className = 'value green';
       document.getElementById('card-blur').className = 'card ok';
+    });
+
+    // mousemove / keydown simulado
+    document.addEventListener('mousemove', (e) => {
+      if (e.isTrusted) return; // ignora eventos reais do usuário
+      log(`mousemove simulado (x:${Math.round(e.clientX)}, y:${Math.round(e.clientY)})`, 'simulated');
+      document.getElementById('val-activity').textContent = '🟠 Simulado';
+      document.getElementById('val-activity').className = 'value green';
+      document.getElementById('card-activity').className = 'card ok';
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.isTrusted) return; // ignora teclas reais do usuário
+      log(`keydown simulado (key: ${e.key})`, 'simulated');
     });
 
     // setTimeout test
@@ -136,13 +160,11 @@
       document.getElementById('val-timer').textContent = blocked ? `🛡️ ${elapsed}ms` : `⚠️ ${elapsed}ms`;
       document.getElementById('val-timer').className = 'value ' + (blocked ? 'green' : 'red');
       document.getElementById('card-timer').className = 'card ' + (blocked ? 'ok' : 'fail');
-      log(`setTimeout 2000ms executou em ${elapsed}ms`, blocked);
+      log(`setTimeout 2000ms executou em ${elapsed}ms`, blocked ? 'blocked' : 'detected');
     }, 2000);
 
-    // Atualiza a cada segundo
     setInterval(update, 1000);
     update();
   </script>
 </body>
 </html>
-```

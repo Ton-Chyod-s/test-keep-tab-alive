@@ -11,11 +11,14 @@
     .card { background: #1a1a1a; border-radius: 8px; padding: 14px; border-left: 4px solid #333; }
     .card.ok { border-left-color: #00cc44; }
     .card.fail { border-left-color: #cc3333; }
+    .card.warn { border-left-color: #ff9900; }
+    .card.full { grid-column: span 2; }
     .card h3 { font-size: 12px; color: #aaa; margin-bottom: 8px; text-transform: uppercase; }
     .value { font-size: 20px; font-weight: bold; }
     .value.green { color: #00cc44; }
     .value.red { color: #cc3333; }
-    .log { margin-top: 20px; background: #1a1a1a; border-radius: 8px; padding: 14px; height: 200px; overflow-y: auto; }
+    .value.orange { color: #ff9900; }
+    .log { margin-top: 20px; background: #1a1a1a; border-radius: 8px; padding: 14px; height: 220px; overflow-y: auto; }
     .log h3 { font-size: 12px; color: #aaa; margin-bottom: 8px; text-transform: uppercase; }
     .log-item { font-size: 12px; padding: 3px 0; border-bottom: 1px solid #222; }
     .log-item.blocked { color: #00cc44; }
@@ -58,9 +61,9 @@
       <h3>setTimeout (2000ms)</h3>
       <div class="value" id="val-timer">Aguardando...</div>
     </div>
-    <div class="card" id="card-activity">
-      <h3>mousemove / keydown</h3>
-      <div class="value" id="val-activity">Aguardando...</div>
+    <div class="card full" id="card-activity">
+      <h3>mousemove / keydown simulado</h3>
+      <div class="value" id="val-activity">Aguardando simulação... (a cada 30s)</div>
     </div>
   </div>
 
@@ -106,7 +109,6 @@
       bar.className = 'status-bar ' + (allOk ? 'active' : 'inactive');
     }
 
-    // visibilitychange
     document.addEventListener('visibilitychange', () => {
       const vs = document.visibilityState;
       if (vs === 'hidden') {
@@ -123,7 +125,6 @@
       update();
     });
 
-    // blur
     window.addEventListener('blur', () => {
       log('blur detectado', 'detected');
       document.getElementById('val-blur').textContent = '⚠️ Detectado!';
@@ -138,21 +139,19 @@
       document.getElementById('card-blur').className = 'card ok';
     });
 
-    // mousemove / keydown simulado
     document.addEventListener('mousemove', (e) => {
-      if (e.isTrusted) return; // ignora eventos reais do usuário
+      if (e.isTrusted) return;
       log(`mousemove simulado (x:${Math.round(e.clientX)}, y:${Math.round(e.clientY)})`, 'simulated');
-      document.getElementById('val-activity').textContent = '🟠 Simulado';
-      document.getElementById('val-activity').className = 'value green';
-      document.getElementById('card-activity').className = 'card ok';
+      document.getElementById('val-activity').textContent = `🟠 Simulado às ${new Date().toLocaleTimeString()}`;
+      document.getElementById('val-activity').className = 'value orange';
+      document.getElementById('card-activity').className = 'card full warn';
     });
 
     document.addEventListener('keydown', (e) => {
-      if (e.isTrusted) return; // ignora teclas reais do usuário
+      if (e.isTrusted) return;
       log(`keydown simulado (key: ${e.key})`, 'simulated');
     });
 
-    // setTimeout test
     let timerStart = Date.now();
     setTimeout(() => {
       const elapsed = Date.now() - timerStart;
